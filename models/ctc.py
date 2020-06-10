@@ -1,12 +1,11 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
-class Encoder(nn.Module):
+class CTC_ASR(nn.Module):
     def __init__(self, args):
         super().__init__()
-        # bidirectional
-        self.nout = 512*2
         
         ''' VGG extractor for ASR described in https://arxiv.org/pdf/1706.02737.pdf'''
         self.extractor = nn.Sequential(
@@ -24,6 +23,8 @@ class Encoder(nn.Module):
         self.rnn = nn.LSTM(
             input_size=1280, hidden_size=512, num_layers=5, 
             batch_first=True, bidirectional=True)
+        
+        self.out = nn.Linear(512*2, args.vocabSize+1)
         
     def view_input(self, feature, feat_len):
         # downsample time because of max-pooling ops over time
@@ -46,7 +47,8 @@ class Encoder(nn.Module):
         #  N x T/4 x 128 x D/4 -> N x T/4 x 32D
         feature = feature.contiguous().view(feature.shape[0], feature.shape[1], -1)
         feature, _ = self.rnn(feature)
-        return feature, feat_len
+        logits = F.log_softmax(self.out(feature), dim=-1).transpose(0,1)
+        return logits, feat_len
     
     
     

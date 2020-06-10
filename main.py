@@ -10,7 +10,7 @@ from torchsummaryX import summary
 import os
 import argparse
 
-from model import ASR
+from models.ctc import CTC_ASR
 
 
 parser = argparse.ArgumentParser()
@@ -135,7 +135,7 @@ devLoader = DataLoader(
 ###############################################################################
 # Define model
 ###############################################################################
-net = ASR(args).cuda()
+net = CTC_ASR(args).cuda()
 criterion = nn.CTCLoss(blank=args.vocabSize)
 optimizer = optim.Adam(net.parameters(), lr=1e-4, weight_decay=1e-4)
 
