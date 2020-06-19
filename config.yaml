@@ -1,0 +1,24 @@
+data:
+    data_root: "/home/xieliang/Data"
+    save_root: "/home/xieliang/Data/transducer.pth"            # the trained transducer model path
+    pretrained_encoder: ''   # the pretrained encoder model path
+    pretrained_decoder: ''   # the pretrained decoder model path
+    vocabSize: 41            # the vocab includes '<pad>' and '<blank>' tokens
+    blank_idx: ''            # the index of '<blank>' token in vocabulary
+    pad_idx: ''              # the index of '<pad>' token in vocabulary
+model:
+    ctc:
+    lm:
+        nemd: 128
+        nhid: 128
+        nlayer: 2
+        tie_embedding: True
+    transducer:
+        encoder_nout: 256
+        decoder_nout: 256
+        nhid: 256   # the feature dimension in joint net
+training:
+    BSZ: 8
+    lr: 0.0001
+    momentum: 0.9
+    weight_decay: 0
