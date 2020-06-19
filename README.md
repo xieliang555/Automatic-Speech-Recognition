@@ -29,11 +29,11 @@ This repository contrains implementations of end-to-end ASR system by LAS, CTC(w
 
 ## Reference
 
-[[1] A Comparison of Sequence-to-Sequence Models for Speech Recognition @paper](https://www.isca-speech.org/archive/Interspeech_2017/abstracts/0233.html)
-[[2] Deep Learning for Human Language Processing (2020,Spring) @course](http://speech.ee.ntu.edu.tw/~tlkagk/courses.html)
-[[3] Alexander-H-Liu/End-to-end-ASR-Pytorch @github](https://github.com/Alexander-H-Liu/End-to-end-ASR-Pytorch) 
-[[4] Open Source Korean End-to-end Automatic Speech Recognition](https://github.com/sooftware/KoSpeech)
-[[5] LANGUAGE TRANSLATION WITH TORCHTEXT @github](https://github.com/pytorch/tutorials/blob/master/beginner_source/torchtext_translation_tutorial.py)
+- A Comparison of Sequence-to-Sequence Models for Speech Recognition [[Ref](https://www.isca-speech.org/archive/Interspeech_2017/abstracts/0233.html)]
+- Deep Learning for Human Language Processing (2020,Spring) [[Ref](http://speech.ee.ntu.edu.tw/~tlkagk/courses.html)]
+- Alexander-H-Liu/End-to-end-ASR-Pytorch [[Ref](https://github.com/Alexander-H-Liu/End-to-end-ASR-Pytorch)]
+- Open Source Korean End-to-end Automatic Speech Recognition [[Ref](https://github.com/sooftware/KoSpeech)]
+- LANGUAGE TRANSLATION WITH TORCHTEXT [[Ref](https://github.com/pytorch/tutorials/blob/master/beginner_source/torchtext_translation_tutorial.py)]
 
 
 ## Acknowledge
