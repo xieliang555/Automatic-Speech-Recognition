@@ -2,6 +2,13 @@
 This repository contrains implementations of end-to-end ASR system by LAS, CTC(w/o attention), and transducer(w/o attention).
 
 
+## Dependencies
+- torch >= 1.5.1
+- torchtext >= 0.6.0
+- torchaudio
+- warp-rnnt
+
+
 ## Phoneme Error Rate on TIMIT
 
 |   Model                |   Loss/PER/epochs/time/converge   |  Loss/PER/epochs/time/converge | 

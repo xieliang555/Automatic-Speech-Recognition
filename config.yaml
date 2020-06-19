@@ -1,13 +1,15 @@
 data:
     data_root: "/home/xieliang/Data"
-    save_root: "/home/xieliang/Data/transducer.pth"            # the trained transducer model path
-    pretrained_encoder: ''   # the pretrained encoder model path
-    pretrained_decoder: ''   # the pretrained decoder model path
+    trained_transducer: "/home/xieliang/Data/transducer.pth"          
+    trained_ctc: "/home/xieliang/Data/ctc2_test.pth"                        
+    trained_lm: ''   
     vocabSize: 41            # the vocab includes '<pad>' and '<blank>' tokens
-    blank_idx: ''            # the index of '<blank>' token in vocabulary
-    pad_idx: ''              # the index of '<pad>' token in vocabulary
+    blank_idx: 1             # the index of '<blank>' token in vocabulary
+    pad_idx: 0               # the index of '<pad>' token in vocabulary
 model:
     ctc:
+        nhid: 128
+        nlayer: 1
     lm:
         nemd: 128
         nhid: 128
@@ -16,7 +18,7 @@ model:
     transducer:
         encoder_nout: 256
         decoder_nout: 256
-        nhid: 256   # the feature dimension in joint net
+        nhid: 256        
 training:
     BSZ: 8
     lr: 0.0001

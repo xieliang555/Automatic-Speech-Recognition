@@ -9,36 +9,27 @@ from torchtext.data import Field
 from torchsummaryX import summary
 
 import os
+import yaml
 import argparse
 import numpy as np
 from itertools import groupby
 
-from utils import wer
+import sys
+sys.path.append('..')
+from utils import wer, AttrDict
 from models.ctc import CTC_ASR
 from datasets import TIMIT
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument(
-    '--data_root', type=str, default="/home/xieliang/Data",
-    help='training and evaluating data root')
-parser.add_argument(
-    '--save_root', type=str, default="/home/xieliang/Data/ctc1.pth")
-parser.add_argument('--BSZ', type=int, default=8, help='batch size')
 parser.add_argument('--seed', type=int, default=1111)
-parser.add_argument(
-    '--num_workers', type=int, default=0, 
-    help='number of process for loading data')
-parser.add_argument('--use_cuda', default=True)
-parser.add_argument('--vocabSize', type=int, default=40)
-parser.add_argument('--pad_idx', type=int, default=0)
 parser.add_argument('--resume_training', action='store_true')
+parser.add_argument('--device', type=str, default="0")
 args = parser.parse_args()
 
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+os.environ["CUDA_VISIBLE_DEVICES"]=args.device
 torch.manual_seed(args.seed)
-if args.use_cuda:
-    torch.cuda.manual_seed(args.seed)
+torch.cuda.manual_seed(args.seed)
 
 
 def train(net, trainLoader, criterion, optimizer, epoch):
@@ -58,8 +49,8 @@ def train(net, trainLoader, criterion, optimizer, epoch):
         loss = criterion(log_logits, utterance, feat_len, utter_len)
         running_loss += loss.item()
         preds = log_logits.max(-1)[1].transpose(0,1)
-        preds = [[k for k, _ in groupby(s) if k!=args.vocabSize] for s in preds]
-        utterance = [u[u!=args.pad_idx] for u in utterance]
+        preds = [[k for k, _ in groupby(s) if k!=config.data.blank_idx] for s in preds]
+        utterance = [u[u!=config.data.pad_idx] for u in utterance]
         # long sequence lower computation
         running_wer += np.array([wer(*z) for z in zip(utterance, preds)]).mean()
         loss.backward()
@@ -88,20 +79,24 @@ def evaluate(net, devLoader, criterion):
             loss = criterion(log_logits, utterance, feat_len, utter_len)
             epoch_loss += loss.item()
             preds = log_logits.max(-1)[1].transpose(0,1)
-            preds = [[k for k, _ in groupby(s) if k!=args.vocabSize] for s in preds]
-            utterance = [u[u!=args.pad_idx] for u in utterance]
+            preds = [[k for k, _ in groupby(s) if k!=config.data.blank_idx] for s in preds]
+            utterance = [u[u!=config.data.pad_idx] for u in utterance]
             epoch_wer += np.array([wer(*z) for z in zip(utterance, preds)]).mean()
             
-        return epoch_loss/len(devLoader), epoch_wer/len(devLoader)
+    return epoch_loss/len(devLoader), epoch_wer/len(devLoader)
 
 
 ###############################################################################
 # Load data
 ###############################################################################
-trainSet = TIMIT(args.data_root, mode='train')
-devSet = TIMIT(args.data_root, mode='test')
+print('load data')
+configfile = open('../config.yaml')
+config=AttrDict(yaml.load(configfile, Loader=yaml.FullLoader))
+trainSet = TIMIT(config.data.data_root, mode='train')
+devSet = TIMIT(config.data.data_root, mode='test')
 
-TEXT = Field(lower=True, include_lengths=True, batch_first=True, unk_token=None)
+TEXT = Field(lower=True, include_lengths=True, 
+             batch_first=True, unk_token=None)
 # sents = ['aa', 'ae', 'ah', 'ao', 'aw', 'ax', 'axr', 
 #          'ay', 'b', 'bcl', 'ch', 'd', 'dcl', 'dh', 
 #          'dx', 'eh', 'el', 'em', 'en', 'eng', 'epi', 
@@ -113,15 +108,20 @@ TEXT = Field(lower=True, include_lengths=True, batch_first=True, unk_token=None)
 
 # 61 target phone mapped to 39
 # ref: https://github.com/zzw922cn/Automatic_Speech_Recognition
+print('build vocab')
 sents = ['iy', 'ix', 'eh', 'ae', 'ax', 'uw', 'uh',
          'ao', 'ey', 'ay', 'oy', 'aw', 'ow', 'er',
          'l', 'r', 'w', 'y', 'm', 'n', 'ng', 'v',
          'f', 'dh', 'th', 'z', 's', 'zh', 'jh', 'ch',
          'b', 'p', 'd', 'dx', 't', 'g', 'k', 'hh', 'h#']
 sents = [[i] for i in sents]
-TEXT.build_vocab(sents)
-assert args.vocabSize == len(TEXT.vocab)
-assert args.pad_idx == TEXT.vocab.stoi['<pad>']
+TEXT.build_vocab(sents, specials=['<blank>'])
+print(len(TEXT.vocab))
+assert config.data.vocabSize == len(TEXT.vocab)
+print(TEXT.vocab.stoi['<pad>'])
+assert config.data.pad_idx == TEXT.vocab.stoi['<pad>']
+print(TEXT.vocab.stoi['<blank>'])
+assert config.data.blank_idx == TEXT.vocab.stoi['<blank>']
 
 
 def my_collate(batch):
@@ -140,11 +140,11 @@ def my_collate(batch):
             'utterance':utterance, 'utter_len': utter_len}
 
 trainLoader = DataLoader(
-    trainSet, batch_size=args.BSZ,shuffle=True, pin_memory=args.use_cuda,
-    collate_fn=my_collate, num_workers=args.num_workers)
+    trainSet, batch_size=config.training.BSZ,shuffle=True, pin_memory=True,
+    collate_fn=my_collate, num_workers=0)
 devLoader = DataLoader(
-    devSet, batch_size=args.BSZ, shuffle=False, pin_memory=args.use_cuda, 
-    collate_fn=my_collate, num_workers=args.num_workers)
+    devSet, batch_size=config.training.BSZ, shuffle=False, pin_memory=True, 
+    collate_fn=my_collate, num_workers=0)
 
 # for batchIdx, batch in enumerate(devLoader):
 #     print(batch['feature'].shape)
@@ -157,9 +157,9 @@ devLoader = DataLoader(
 ###############################################################################
 # Define model
 ###############################################################################
-net = CTC_ASR(args).cuda()
+net = CTC_ASR(config).cuda()
 if args.resume_training:
-    ckpt = torch.load(args.save_root)
+    ckpt = torch.load(config.data.trained_ctc)
     start_epoch = ckpt['epoch']+1
     best_dev_wer = ckpt['best_dev_wer']
     net.load_state_dict(ckpt['net_state_dict'])
@@ -167,8 +167,8 @@ if args.resume_training:
 else:
     start_epoch = 0
     best_dev_wer = float('inf')
-criterion = nn.CTCLoss(blank=args.vocabSize, zero_infinity=True)
-optimizer = optim.SGD(net.parameters(), lr=1e-4, momentum=0.9)
+criterion = nn.CTCLoss(blank=config.data.blank_idx, zero_infinity=True)
+optimizer = optim.SGD(net.parameters(), lr=config.training.lr, momentum=config.training.momentum)
 
 # summary(net, torch.zeros(2,500,26).cuda())
 ###############################################################################
@@ -183,7 +183,7 @@ for epoch in range(start_epoch, 1000):
     if epoch_wer < best_dev_wer:
         best_dev_wer = epoch_wer
         torch.save({'net_state_dict':net.state_dict(), 
-                    'epoch':epoch, 'best_dev_wer':best_dev_wer}, args.save_root)
+                    'epoch':epoch, 'best_dev_wer':best_dev_wer}, config.data.trained_ctc)
         print('best model saved')
         
     

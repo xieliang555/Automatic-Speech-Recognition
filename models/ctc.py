@@ -4,8 +4,10 @@ import torch.nn.functional as F
 
 
 class CTC_ASR(nn.Module):
-    def __init__(self, args):
+    def __init__(self, config):
         super().__init__()
+        nhid = config.model.ctc.nhid
+        nlayer = config.model.ctc.nlayer
         
         ''' VGG extractor for ASR described in https://arxiv.org/pdf/1706.02737.pdf'''
         self.extractor = nn.Sequential(
@@ -20,14 +22,13 @@ class CTC_ASR(nn.Module):
 #             nn.ReLU(),
             nn.MaxPool2d(2, stride=2)  # Half-time dimension
         )
-        self.rnn = nn.LSTM(
-            input_size=1280, hidden_size=128, num_layers=1, 
+        self.rnn = nn.LSTM(1280, nhid, nlayer, 
             batch_first=True, bidirectional=True)
 #         self.rnn_2 = nn.LSTM(
 #             input_size=256, hidden_size=128, num_layers=1, 
 #             batch_first=True, bidirectional=True)
         
-        self.out = nn.Linear(256, args.vocabSize+1)
+        self.out = nn.Linear(256, config.data.vocabSize)
         
     def view_input(self, feature, feat_len):
         # downsample time because of max-pooling ops over time
