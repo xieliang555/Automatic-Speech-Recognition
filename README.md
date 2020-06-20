@@ -45,6 +45,6 @@ This repository contrains implementations of end-to-end ASR system by LAS, CTC(w
 
 ## Acknowledge
 
-- Thanks to [warp-rnnt](https://github.com/1ytic/warp-rnnt/tree/master/pytorch_binding). Note that it is better installed from source code. It supports GPU PyTorch binding.
-- Thanks to [warp-transducer](https://github.com/HawkAaron/warp-transducer/tree/master/pytorch_binding).  Carefully set the environment variables before run ```python setup.py instal``` [Ref](https://github.com/HawkAaron/warp-transducer/issues/15). It supports both CPU and GPU PyTorch binding.
+- Thanks to [warp-rnnt](https://github.com/1ytic/warp-rnnt/tree/master/pytorch_binding), a PyTorch bindings for CUDA-Warp RNN-Transducer. Note that it is better installed from source code.
+- Thanks to [warp-transducer](https://github.com/HawkAaron/warp-transducer/tree/master/pytorch_binding), a more general implementation of RNN transducer.  Carefully set the environment variables as [refered here](https://github.com/HawkAaron/warp-transducer/issues/15) before run ```python setup.py instal``` .
 
