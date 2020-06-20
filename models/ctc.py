@@ -8,6 +8,7 @@ class CTC_ASR(nn.Module):
         super().__init__()
         nhid = config.model.ctc.nhid
         nlayer = config.model.ctc.nlayer
+        vocabSize = config.data.vocabSize
         
         ''' VGG extractor for ASR described in https://arxiv.org/pdf/1706.02737.pdf'''
         self.extractor = nn.Sequential(
@@ -28,7 +29,7 @@ class CTC_ASR(nn.Module):
 #             input_size=256, hidden_size=128, num_layers=1, 
 #             batch_first=True, bidirectional=True)
         
-        self.out = nn.Linear(256, config.data.vocabSize)
+        self.ctc_out = nn.Linear(256, vocabSize)
         
     def view_input(self, feature, feat_len):
         # downsample time because of max-pooling ops over time
@@ -59,7 +60,7 @@ class CTC_ASR(nn.Module):
 #         feature = feature[:,::2,:]
 #         feature, _ = self.rnn_2(feature)
 #         feature = feature[:,::2,:]
-        logits = self.out(feature)
+        logits = self.ctc_out(feature)
 #         feat_len = feat_len//4
         return logits, feat_len
     

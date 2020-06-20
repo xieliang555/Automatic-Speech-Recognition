@@ -12,7 +12,7 @@ class TIMIT(Dataset):
         '''
         description:
             only using core test set
-            mapping 61 phoneme to 39 phoneme
+            mapping 61 phonemes to 39 phonemes
         '''
         core_test_list = ['MDAB0', 'MWBT0', 'FELC0',
                           'MTAS1', 'MWEW0', 'FPAS0',

@@ -17,10 +17,10 @@ class LM(nn.Module):
             nemd if l==0 else nhid, nhid if l!=nlayer-1 else nemd, 
             batch_first=True) for l in range(nlayer)]
         self.rnns = nn.ModuleList(rnns)
-        self.out = nn.Linear(nemd, vocabSize)
+        self.lm_out = nn.Linear(nemd, vocabSize)
         
         if tie_embedding:
-            self.out.weight = self.embedding.weight
+            self.lm_out.weight = self.embedding.weight
       
     def forward(self, inputs):
         '''
@@ -29,8 +29,10 @@ class LM(nn.Module):
         '''
         [rnn.flatten_parameters() for rnn in self.rnns]
         embedded = self.embedding(inputs)
-        outputs,_ = self.rnns(embedded)
-        outputs = self.out(outputs)
+        outputs = embedded
+        for rnn in self.rnns:
+            outputs,_ = rnn(outputs)
+        outputs = self.lm_out(outputs)
         return outputs
     
     

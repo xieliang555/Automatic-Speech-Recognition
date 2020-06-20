@@ -96,7 +96,7 @@ trainSet = TIMIT(config.data.data_root, mode='train')
 devSet = TIMIT(config.data.data_root, mode='test')
 
 TEXT = Field(lower=True, include_lengths=True, 
-             batch_first=True, unk_token=None)
+             batch_first=True)
 # sents = ['aa', 'ae', 'ah', 'ao', 'aw', 'ax', 'axr', 
 #          'ay', 'b', 'bcl', 'ch', 'd', 'dcl', 'dh', 
 #          'dx', 'eh', 'el', 'em', 'en', 'eng', 'epi', 

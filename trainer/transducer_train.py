@@ -13,7 +13,10 @@ import yaml
 import argparse
 import numpy as np
 from itertools import groupby
+from warp_rnnt import rnnt_loss
 
+import sys
+sys.path.append('..')
 from utils import wer, AttrDict
 from models.transducer import Transducer_ASR
 from datasets import TIMIT
@@ -37,14 +40,14 @@ def train(net, trainLoader, optimizer, epoch):
         inputs = batch['feature'].cuda()
         inputs_len = batch['feat_len'].cuda()
         targets = batch['utterance'].cuda()
-        tragets_len = batch['utter_len'].cuda()
+        targets_len = batch['utter_len'].cuda()
         
         optimizer.zero_grad()
         loss = net(inputs, targets, inputs_len, targets_len)
-        running_loss += loss.item()
 
         loss.backward()
         optimizer.step()
+        running_loss += loss.item()
         
         N = len(trainLoader) // 10
         if batchIdx % N == N-1:
@@ -71,6 +74,7 @@ def evaluate(net, devLoader):
 ###############################################################################
 # Load data
 ###############################################################################
+print('load dataset')
 configfile = open('../config.yaml')
 config = AttrDict(yaml.load(configfile, Loader=yaml.FullLoader))
 trainSet = TIMIT(config.data.data_root, mode='train')
@@ -88,6 +92,7 @@ TEXT = Field(lower=True, include_lengths=True, batch_first=True, unk_token=None)
 
 # 61 target phone mapped to 39
 # ref: https://github.com/zzw922cn/Automatic_Speech_Recognition
+print('build vocab')
 sents = ['iy', 'ix', 'eh', 'ae', 'ax', 'uw', 'uh',
          'ao', 'ey', 'ay', 'oy', 'aw', 'ow', 'er',
          'l', 'r', 'w', 'y', 'm', 'n', 'ng', 'v',
@@ -96,9 +101,7 @@ sents = ['iy', 'ix', 'eh', 'ae', 'ax', 'uw', 'uh',
 sents = [[i] for i in sents]
 TEXT.build_vocab(sents, specials=['<blank>'])
 assert config.data.vocabSize == len(TEXT.vocab)
-print(TEXT.vocab.stoi['<pad>'])
 assert config.data.pad_idx == TEXT.vocab.stoi['<pad>']
-print(TEXT.vocab.stoi['<blank>'])
 assert config.data.blank_idx == TEXT.vocab.stoi['<blank>']
 
 def my_collate(batch):
@@ -144,7 +147,7 @@ if args.resume_training:
 else:
     start_epoch = 0
     best_dev_wer = float('inf')
-optimizer = optim.SGD(net.parameters(), lr=confg.training.lr, momentum=config.training.momentum)
+optimizer = optim.SGD(net.parameters(), lr=config.training.lr, momentum=config.training.momentum)
 
 # summary(net, torch.zeros(2,500,26).cuda())
 ###############################################################################

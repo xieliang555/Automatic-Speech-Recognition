@@ -6,6 +6,8 @@ data:
     vocabSize: 41            # the vocab includes '<pad>' and '<blank>' tokens
     blank_idx: 1             # the index of '<blank>' token in vocabulary
     pad_idx: 0               # the index of '<pad>' token in vocabulary
+    using_trained_ctc: False
+    using_trained_lm: False
 model:
     ctc:
         nhid: 128
@@ -14,7 +16,7 @@ model:
         nemd: 128
         nhid: 128
         nlayer: 2
-        tie_embedding: True
+        tie_embedding: False
     transducer:
         encoder_nout: 256
         decoder_nout: 256
