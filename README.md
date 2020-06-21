@@ -15,7 +15,8 @@ This repository contrains implementations of end-to-end ASR system by LAS, CTC(w
 | :------------------:   |   :----------------------------:  | :-----------------------------:|
 | CTC (w/o PM)           |      2.3436/0.6812/100/6h/No      |                                |
 | CTC                    |      1.8257/0.5512/100/6h/No      |     1.2453/0.3761/300/1d+/No   |
-| Transducer             |                                   |                                |
+| Transducer             |      12.442/0.3048/38/1.5h/Yes    |                                |
+| LAS                    |                                   |                                |
 
 **PM:**  Phoneme mapping from 61 to 39 target phonemes ([Ref](https://github.com/zzw922cn/Automatic_Speech_Recognition)).
 
@@ -23,15 +24,17 @@ This repository contrains implementations of end-to-end ASR system by LAS, CTC(w
 ## Note
 1. Smaller vocabulary model (w/ PM) converges faster and generalizes better than larger vocabulary model (w/o PM).
 2. Generalization: VGG2 feature extractor > VGG4 feature extractor > No feature extractor.
-3. Training gets slower as epoch iterates. (cpu util?)
+3. Training gets slower as epoch iterates with crnn-ctc. (cpu util?, per computing?)
+4. Training set converge as epoch iterates while Sub-training set dose not?
+5. Transducer converges faster and generalizes better than crnn-ctc on TIMIT.
 
  
 
 ## To do
-1. weight noise
-2. transducer
-3. LAS
-4. hybrid 
+1. model structure search
+2. LAS
+3. hybrid 
+4. regularizer(weight noise)
 
 
 ## Reference
@@ -46,5 +49,5 @@ This repository contrains implementations of end-to-end ASR system by LAS, CTC(w
 ## Acknowledge
 
 - Thanks to [warp-rnnt](https://github.com/1ytic/warp-rnnt/tree/master/pytorch_binding), a PyTorch bindings for CUDA-Warp RNN-Transducer. Note that it is better installed from source code.
-- Thanks to [warp-transducer](https://github.com/HawkAaron/warp-transducer/tree/master/pytorch_binding), a more general implementation of RNN transducer.  Carefully set the environment variables as [refered here](https://github.com/HawkAaron/warp-transducer/issues/15) before run ```python setup.py instal``` .
+- Thanks to [warp-transducer](https://github.com/HawkAaron/warp-transducer/tree/master/pytorch_binding), a more general implementation of RNN transducer.  Carefully set the environment variables as [refered here](https://github.com/HawkAaron/warp-transducer/issues/15) before run ```python setup.py install``` .
 

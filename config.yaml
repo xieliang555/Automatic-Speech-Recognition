@@ -15,7 +15,7 @@ model:
     lm:
         nemd: 128
         nhid: 128
-        nlayer: 2
+        nlayer: 1
         tie_embedding: False
     transducer:
         encoder_nout: 256

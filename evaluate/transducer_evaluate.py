@@ -10,7 +10,6 @@ from torchsummaryX import summary
 
 import os
 import yaml
-import argparse
 import numpy as np
 from itertools import groupby
 from warp_rnnt import rnnt_loss
@@ -22,37 +21,6 @@ from models.transducer import Transducer_ASR
 from datasets import TIMIT
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--seed', type=int, default=1111)
-parser.add_argument('--resume_training', action='store_true')
-parser.add_argument('--device', type=str, default="0")
-args = parser.parse_args()
-
-os.environ["CUDA_VISIBLE_DEVICES"]=args.device
-torch.manual_seed(args.seed)
-torch.cuda.manual_seed(args.seed)
-
-
-def train(net, trainLoader, optimizer, epoch):
-    net.train()
-    running_loss = 0.0
-    for batchIdx, batch in enumerate(trainLoader):
-        inputs = batch['feature'].cuda()
-        inputs_len = batch['feat_len'].cuda()
-        targets = batch['utterance'].cuda()
-        targets_len = batch['utter_len'].cuda()
-        
-        optimizer.zero_grad()
-        loss = net(inputs, targets, inputs_len, targets_len)
-
-        loss.backward()
-        optimizer.step()
-        running_loss += loss.item()
-        
-        N = len(trainLoader) // 10
-        if batchIdx % N == N-1:
-            print(f'epoch: {epoch} | batch: {batchIdx} | loss: {running_loss/N}')
-            running_loss = 0.0
 
 
 def evaluate(net, devLoader):
@@ -60,16 +28,17 @@ def evaluate(net, devLoader):
     epoch_per = 0.0
     with torch.no_grad():
         for batchIdx, batch in enumerate(devLoader):
-            inputs = batch['feature'].cuda()
-            inputs_len = batch['feat_len'].cuda()
-            targets = batch['utterance'].cuda()
-            targets_len = batch['utter_len'].cuda()
+            inputs = batch['feature']
+            inputs_len = batch['feat_len']
+            targets = batch['utterance']
+            targets_len = batch['utter_len']
             
             preds = net.best_path_decode(inputs, inputs_len)
             preds = [[k for k, _ in groupby(sent)] for sent in preds]
             targets = [u[u!=config.data.pad_idx] for u in targets]
             per = np.array([wer(*z) for z in zip(targets, preds)]).mean()
             epoch_per += per
+            print(f'evaluate: batchIdx {batchIdx} | per {per}')
             
     return epoch_per/len(devLoader)
 
@@ -80,8 +49,8 @@ def evaluate(net, devLoader):
 print('load dataset')
 configfile = open('../config.yaml')
 config = AttrDict(yaml.load(configfile, Loader=yaml.FullLoader))
-trainSet = TIMIT(config.data.data_root, mode='train')
 devSet = TIMIT(config.data.data_root, mode='test')
+
 
 TEXT = Field(lower=True, include_lengths=True, batch_first=True, unk_token=None)
 # sents = ['aa', 'ae', 'ah', 'ao', 'aw', 'ax', 'axr', 
@@ -122,45 +91,29 @@ def my_collate(batch):
     return {'feature':feature, 'feat_len': feat_len, 
             'utterance':utterance, 'utter_len': utter_len}
 
-trainLoader = DataLoader(
-    trainSet, batch_size=config.training.BSZ, shuffle=True, pin_memory=True,
-    collate_fn=my_collate, num_workers=0)
 
 devLoader = DataLoader(
-    devSet, batch_size=config.training.BSZ, shuffle=False, pin_memory=True, 
+    devSet, batch_size=config.training.BSZ, shuffle=False, pin_memory=False, 
     collate_fn=my_collate, num_workers=0)
 
+
 ###############################################################################
-# Define model
+# Load model
 ###############################################################################
-net = Transducer_ASR(config).cuda()
-if args.resume_training:
-    ckpt = torch.load(config.data.trained_transducer)
-    start_epoch = ckpt['epoch']+1
-    best_dev_per = ckpt['best_dev_per']
-    net.load_state_dict(ckpt['net_state_dict'])
-    print(f'resume training from epcoh {start_epoch} with best_dev_per {best_dev_per}')
-else:
-    start_epoch = 0
-    best_dev_per = float('inf')
-optimizer = optim.SGD(net.parameters(), lr=config.training.lr, momentum=config.training.momentum)
+net = Transducer_ASR(config)
+ckpt = torch.load(config.data.trained_transducer, map_location=torch.device('cpu'))
+start_epoch = ckpt['epoch']+1
+best_dev_per = ckpt['best_dev_per']
+net.load_state_dict(ckpt['net_state_dict'])
+print(f'epoch: {start_epoch} | best_dev_per: {best_dev_per}')
 
 
 ###############################################################################
-# Training code
+# evaluating
 ###############################################################################
 
-for epoch in range(start_epoch, 1000):
-    train(net, trainLoader, optimizer, epoch)
-    dev_per = evaluate(net, devLoader)
-    print(f'end of epoch {epoch}: dev_per: {dev_per}')
-    
-    if dev_per < best_dev_per:
-        best_dev_per = dev_per
-        torch.save({'net_state_dict':net.state_dict(), 
-                    'epoch':epoch, 'best_dev_per':best_dev_per}, 
-                   config.data.trained_transducer)
-        print('best model saved')
+dev_per = evaluate(net, devLoader)
+print(f'test_dev_per:, {dev_per}')
         
     
 
