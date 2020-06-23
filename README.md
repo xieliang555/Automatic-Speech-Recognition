@@ -11,43 +11,45 @@ This repository contrains implementations of end-to-end ASR system by LAS, CTC(w
 
 ## Phoneme Error Rate on TIMIT
 
-|   Model                |   Loss/PER/epochs/time/converge   |  Loss/PER/epochs/time/converge | 
-| :------------------:   |   :----------------------------:  | :-----------------------------:|
-| CTC (w/o PM)           |      2.3436/0.6812/100/6h/No      |                                |
+|   Model                |   Epoch   |  Loss (train/dev) |  Per (train/dev)  |
+| :------------------:   |:---------:| :----------------:|:-----------------:|
 | CTC                    |      1.8257/0.5512/100/6h/No      |     1.2453/0.3761/300/1d+/No   |
 | Transducer             |      12.442/0.3048/38/1.5h/Yes    |                                |
+| Pretrained Transducer  |                                   |                                |
 | LAS                    |                                   |                                |
 
-**PM:**  Phoneme mapping from 61 to 39 target phonemes ([Ref](https://github.com/zzw922cn/Automatic_Speech_Recognition)).
 
 
 ## Note
-1. Smaller vocabulary model (w/ PM) converges faster and generalizes better than larger vocabulary model (w/o PM).
-2. Generalization: VGG2 feature extractor > VGG4 feature extractor > No feature extractor.
-3. Training gets slower as epoch iterates with crnn-ctc. (cpu util?, per computing?)
-4. Training set converge as epoch iterates while Sub-training set dose not?
-5. Transducer converges faster and generalizes better than crnn-ctc on TIMIT.
-
+1. Smaller vocabulary (due to phoneme mapping<sup>[7](#Reference)</sup>) improves performance.
+2. VGG Feature extractor<sup>[7](#Reference)</sup> (ResNet even better) helps model to converge fast.
+3. Transducer converges faster and generalizes better than ctc.
+4. Weight noise<sup>[8](#Reference)</sup> is a useful regularizer for RNN/LSTM.
+5. Batch normalization helps model to converge fast.
  
 
+
 ## To do
-1. model structure search
-2. LAS
-3. hybrid 
-4. regularizer(weight noise)
+1. pretrained LM and CTC
+2. beam search
+3. LAS
+4. hybrid 
+
 
 
 ## Reference
+1. A Comparison of Sequence-to-Sequence Models for Speech Recognition [[Ref](https://www.isca-speech.org/archive/Interspeech_2017/abstracts/0233.html)]
+2. Deep Learning for Human Language Processing (2020,Spring) [[Ref](http://speech.ee.ntu.edu.tw/~tlkagk/courses.html)]
+3. Alexander-H-Liu/End-to-end-ASR-Pytorch [[Ref](https://github.com/Alexander-H-Liu/End-to-end-ASR-Pytorch)]
+4. Open Source Korean End-to-end Automatic Speech Recognition [[Ref](https://github.com/sooftware/KoSpeech)]
+5. LANGUAGE TRANSLATION WITH TORCHTEXT [[Ref](https://github.com/pytorch/tutorials/blob/master/beginner_source/torchtext_translation_tutorial.py)]
+6. End-to-end automatic speech recognition system implemented in TensorFlow [[Ref](https://github.com/zzw922cn/Automatic_Speech_Recognition)]
+7. Advances in Joint CTC-Attention based End-to-End Speech Recognition with a Deep CNN Encoder and RNN-LM [[Ref](https://arxiv.org/pdf/1706.02737.pdf)]
+8. Speech Recognition with Deep Recurrent Neural Networks [[Ref](https://arxiv.org/abs/1303.5778)]
 
-- A Comparison of Sequence-to-Sequence Models for Speech Recognition [[Ref](https://www.isca-speech.org/archive/Interspeech_2017/abstracts/0233.html)]
-- Deep Learning for Human Language Processing (2020,Spring) [[Ref](http://speech.ee.ntu.edu.tw/~tlkagk/courses.html)]
-- Alexander-H-Liu/End-to-end-ASR-Pytorch [[Ref](https://github.com/Alexander-H-Liu/End-to-end-ASR-Pytorch)]
-- Open Source Korean End-to-end Automatic Speech Recognition [[Ref](https://github.com/sooftware/KoSpeech)]
-- LANGUAGE TRANSLATION WITH TORCHTEXT [[Ref](https://github.com/pytorch/tutorials/blob/master/beginner_source/torchtext_translation_tutorial.py)]
 
 
 ## Acknowledge
-
 - Thanks to [warp-rnnt](https://github.com/1ytic/warp-rnnt/tree/master/pytorch_binding), a PyTorch bindings for CUDA-Warp RNN-Transducer. Note that it is better installed from source code.
 - Thanks to [warp-transducer](https://github.com/HawkAaron/warp-transducer/tree/master/pytorch_binding), a more general implementation of RNN transducer.  Carefully set the environment variables as [refered here](https://github.com/HawkAaron/warp-transducer/issues/15) before run ```python setup.py install``` .
 

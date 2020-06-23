@@ -10,8 +10,9 @@ data:
     using_trained_lm: False
 model:
     ctc:
-        nhid: 128
+        nhid: 256
         nlayer: 1
+        sigma: 0.02      # noise item
     lm:
         nemd: 128
         nhid: 128

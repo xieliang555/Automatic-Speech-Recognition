@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from warp_rnnt import rnnt_loss
-# from warprnnt_pytorch import RNNTLoss
 
 from .ctc import CTC_ASR
 from .language_model import LM
@@ -38,7 +37,6 @@ class Transducer_ASR(nn.Module):
         self.joint = nn.Linear(encoder_nout+decoder_nout, nhid)
         self.tanh = nn.Tanh()
         self.out = nn.Linear(nhid, self.vocabSize)
-        # self.crit = RNNTLoss()
     
     
     def forward(self, inputs, targets, inputs_len, targets_len):
@@ -62,11 +60,9 @@ class Transducer_ASR(nn.Module):
         enc_state = enc_state.repeat([1,1,u,1])
         concat_state = torch.cat([enc_state, dec_state], dim=-1)
         
-        # softmax?
         logits = self.out(self.tanh(self.joint(concat_state)))
         logits = F.log_softmax(logits, dim=-1)
         loss = rnnt_loss(logits, targets.int(), inputs_len.int(), targets_len.int(), blank=self.blank_idx)
-        # loss = self.crit(logits, targets.int(), inputs_len.int(), targets_len.int())
         return loss.mean()
 
 
@@ -94,13 +90,14 @@ class Transducer_ASR(nn.Module):
             '''
             token_list = []
             dec_state, hidden = self.decoder(blank_token)
+            # minor modification from the original paper incase falling into endless loop
             for t in range(input_len):
                 logits = self.out(self.tanh(
                     self.joint(torch.cat([enc_state[t], dec_state.view(-1)], dim=0))))
                 pred = F.softmax(logits, dim=0).max(0)[1]
                 pred = int(pred.item())
                 
-                # equals to postprocess in ctc
+                # equals to postprocess in ctc ?
                 if pred != self.blank_idx:
                     token_list.append(pred)
                     token = torch.LongTensor([[pred]])

@@ -43,6 +43,13 @@ def train(net, trainLoader, optimizer, epoch):
         targets_len = batch['utter_len'].cuda()
         
         optimizer.zero_grad()
+        # noise weight
+        if args.resume_training:
+            hh_noise = torch.normal(0,config.model.ctc.sigma, size=net.encoder.rnn.weight_hh_l0.shape).cuda()
+            ih_noise = torch.normal(0,config.model.ctc.sigma, size=net.encoder.rnn.weight_ih_l0.shape).cuda()
+            net.encoder.rnn.weight_hh_l0.data.add_(hh_noise)
+            net.encoder.rnn.weight_ih_l0.data.add_(ih_noise)
+        
         loss = net(inputs, targets, inputs_len, targets_len)
 
         loss.backward()
@@ -80,21 +87,11 @@ def evaluate(net, devLoader):
 print('load dataset')
 configfile = open('../config.yaml')
 config = AttrDict(yaml.load(configfile, Loader=yaml.FullLoader))
+
 trainSet = TIMIT(config.data.data_root, mode='train')
 devSet = TIMIT(config.data.data_root, mode='test')
 
 TEXT = Field(lower=True, include_lengths=True, batch_first=True, unk_token=None)
-# sents = ['aa', 'ae', 'ah', 'ao', 'aw', 'ax', 'axr', 
-#          'ay', 'b', 'bcl', 'ch', 'd', 'dcl', 'dh', 
-#          'dx', 'eh', 'el', 'em', 'en', 'eng', 'epi', 
-#          'er', 'ey', 'f', 'g', 'gcl', 'hh', 'hv', 'ih', 
-#          'ix', 'iy', 'jh', 'k', 'kcl', 'l', 'm', 'n', 
-#          'ng', 'nx', 'ow', 'oy', 'p', 'pau', 'pcl', 'q', 
-#          'r', 's', 'sh', 't', 'tcl', 'th', 'uh', 'uw', 
-#          'ux', 'v', 'w', 'y', 'z', 'zh']
-
-# 61 target phone mapped to 39
-# ref: https://github.com/zzw922cn/Automatic_Speech_Recognition
 print('build vocab')
 sents = ['iy', 'ix', 'eh', 'ae', 'ax', 'uw', 'uh',
          'ao', 'ey', 'ay', 'oy', 'aw', 'ow', 'er',
@@ -145,7 +142,9 @@ else:
     best_dev_per = float('inf')
 optimizer = optim.SGD(net.parameters(), lr=config.training.lr, momentum=config.training.momentum)
 
-
+summary(net, 
+        torch.zeros(1,10,123).cuda(), torch.zeros(1,15).long().cuda(), 
+        torch.tensor([10]).long().cuda(), torch.tensor([15]).long().cuda())
 ###############################################################################
 # Training code
 ###############################################################################

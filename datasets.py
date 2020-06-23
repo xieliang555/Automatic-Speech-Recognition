@@ -63,7 +63,7 @@ class TIMIT(Dataset):
         waveform = torch.from_numpy(self.waveform[idx]).view(1, -1).float()
         # get mfcc/fbank feature
         feature = torchaudio.compliance.kaldi.fbank(
-            waveform, num_mel_bins=40)
+            waveform, num_mel_bins=40, use_energy=True)
         # add deltas
         d1 = torchaudio.functional.compute_deltas(feature)
         d2 = torchaudio.functional.compute_deltas(d1)
