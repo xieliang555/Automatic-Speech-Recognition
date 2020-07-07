@@ -2,28 +2,53 @@ data:
     data_root: "/home/xieliang/Data"
     trained_transducer: "/home/xieliang/Data/transducer.pth"          
     trained_ctc: "/home/xieliang/Data/ctc2_test.pth"                        
-    trained_lm: ''   
+    trained_lm: "/home/xieliang/Data/lm.pth" 
+    trained_las: "/home/xieliang/Data/las.pth"
     vocabSize: 41            # the vocab includes '<pad>' and '<blank>' tokens
     blank_idx: 1             # the index of '<blank>' token in vocabulary
     pad_idx: 0               # the index of '<pad>' token in vocabulary
-    using_trained_ctc: False
-    using_trained_lm: False
+    using_trained_ctc: True
+    using_trained_lm: True
 model:
     ctc:
         nhid: 256
         nlayer: 1
-        sigma: 0.02      # noise item
+        sigma: 0.01      # noise item
     lm:
         nemd: 128
         nhid: 128
         nlayer: 1
         tie_embedding: False
+        embed_drop_ratio: 0.2  # embedding regularize
+        lock_drope: 0.2      # embedding lock drop ratio
+        lock_droph: 0        # lstm hidden lock drop ratio
+        lock_dropo: 0.2      # lstm out lock drop ratio
     transducer:
         encoder_nout: 256
         decoder_nout: 256
-        nhid: 256        
+        nhid: 256  
+    las:
+        encoder:
+            nhid: 0
+            nlayer: 0
+            nout: 0
+        attention:
+            nhid: 0
+        decoder:
+            nemd: 0
+            nhid: 0
+            emd_drop: 0
 training:
-    BSZ: 8
+    BSZ: 1
     lr: 0.0001
     momentum: 0.9
     weight_decay: 0
+    
+    
+    
+    
+    
+    
+    
+    
+    

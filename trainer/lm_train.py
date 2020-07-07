@@ -9,6 +9,7 @@ from torchtext.data import Field
 from torchsummaryX import summary
 
 import os
+import math
 import yaml
 import argparse
 import numpy as np
@@ -17,7 +18,7 @@ from itertools import groupby
 import sys
 sys.path.append('..')
 from utils import wer, AttrDict
-from models.ctc import CTC_ASR
+from models.language_model import LM
 from datasets import TIMIT
 
 
@@ -35,13 +36,10 @@ torch.cuda.manual_seed(args.seed)
 def train(net, trainLoader, criterion, optimizer, epoch):
     net.train()
     running_loss = 0.0
-    running_wer = 0.0
     for batchIdx, batch in enumerate(trainLoader):
-        feature = batch['feature'].cuda()
-        feat_len = batch['feat_len'].cuda()
-        utterance = batch['utterance'].cuda()
-        utter_len = batch['utter_len'].cuda()
-        
+        inputs = batch['inputs'].cuda()
+        targets = batch['targets'].cuda()
+
         optimizer.zero_grad()
         # noise weight
         if args.resume_training:
@@ -49,52 +47,37 @@ def train(net, trainLoader, criterion, optimizer, epoch):
             ih_noise = torch.normal(0,config.model.ctc.sigma, size=net.encoder.rnn.weight_ih_l0.shape).cuda()
             net.encoder.rnn.weight_hh_l0.data.add_(hh_noise)
             net.encoder.rnn.weight_ih_l0.data.add_(ih_noise)
-        
-        logits, feat_len = net(feature, feat_len)
-        log_logits = F.log_softmax(logits, dim=-1).transpose(0,1)
-        # without downsampling loss-compute will be resuming
-        loss = criterion(log_logits, utterance, feat_len, utter_len)
+            
+        outputs, _ = net(inputs)
+        outputs = outputs.view(-1, outputs.size(-1))
+        loss = criterion(outputs, targets.view(-1))
         running_loss += loss.item()
-        preds = log_logits.max(-1)[1].transpose(0,1)
-        preds = [[k for k, _ in groupby(s) if k!=config.data.blank_idx] for s in preds]
-        # ?
-        preds = [[k for k, _ in groupby(s)] for s in preds]
-        utterance = [u[u!=config.data.pad_idx] for u in utterance]
-        # long sequence lower computation
-        running_wer += np.array([wer(*z) for z in zip(utterance, preds)]).mean()
+
         loss.backward()
         optimizer.step()
         
         N = len(trainLoader) // 10
         if batchIdx % N == N-1:
-            print(f'epoch: {epoch} | batch: {batchIdx} | loss: {running_loss/N} | wer: {running_wer/N}')
+            running_loss /= N
+            print(f'epoch: {epoch} | batch: {batchIdx} | loss: {running_loss} | ppl: {math.exp(running_loss)}')
             running_loss = 0.0
-            running_wer = 0.0
 
 
 def evaluate(net, devLoader, criterion):
     net.eval()
     epoch_loss = 0.0
-    epoch_wer = 0.0
     with torch.no_grad():
         for batchIdx, batch in enumerate(devLoader):
-            feature = batch['feature'].cuda()
-            feat_len = batch['feat_len'].cuda()
-            utterance = batch['utterance'].cuda()
-            utter_len = batch['utter_len'].cuda()
+            inputs = batch['inputs'].cuda()
+            targets = batch['targets'].cuda()
             
-            logits, feat_len = net(feature, feat_len)
-            log_logits = F.log_softmax(logits, dim=-1).transpose(0,1)
-            loss = criterion(log_logits, utterance, feat_len, utter_len)
+            outputs, _ = net(inputs)
+            outputs = outputs.view(-1, outputs.size(-1))
+            loss = criterion(outputs, targets.view(-1))
             epoch_loss += loss.item()
-            preds = log_logits.max(-1)[1].transpose(0,1)
-            preds = [[k for k, _ in groupby(s) if k!=config.data.blank_idx] for s in preds]
-            # ?
-            preds = [[k for k, _ in groupby(s)] for s in preds]
-            utterance = [u[u!=config.data.pad_idx] for u in utterance]
-            epoch_wer += np.array([wer(*z) for z in zip(utterance, preds)]).mean()
             
-    return epoch_loss/len(devLoader), epoch_wer/len(devLoader)
+    epoch_loss /= len(devLoader)      
+    return epoch_loss, math.exp(epoch_loss)
 
 
 ###############################################################################
@@ -123,18 +106,13 @@ assert config.data.blank_idx == TEXT.vocab.stoi['<blank>']
 
 def my_collate(batch):
     '''
-    feature: [N,T,120]
-    feat_len: [N]
-    utterance: [N,L]
-    utter_len: [N]
+    inputs: [N,L]
+    targets: [N,L]
     '''
-    feature = [item[0] for item in batch]  
-    feat_len = torch.tensor([len(f) for f in feature])
-    feature = pad_sequence(feature, batch_first=True)
-    utterance = [item[1] for item in batch]      
-    utterance, utter_len = TEXT.process(utterance)                 
-    return {'feature':feature, 'feat_len': feat_len, 
-            'utterance':utterance, 'utter_len': utter_len}
+    txt_seqs, seqs_len = TEXT.process([item[1] for item in batch]) 
+    inputs = txt_seqs[:,:-1]
+    targets = txt_seqs[:,1:]
+    return {'inputs':inputs, 'targets':targets}
 
 trainLoader = DataLoader(
     trainSet, batch_size=config.training.BSZ,shuffle=True, pin_memory=True,
@@ -147,18 +125,18 @@ devLoader = DataLoader(
 ###############################################################################
 # Define model
 ###############################################################################
-net = CTC_ASR(config).cuda()
+net = LM(config).cuda()
 if args.resume_training:
-    ckpt = torch.load(config.data.trained_ctc)
+    ckpt = torch.load(config.data.trained_lm)
     start_epoch = ckpt['epoch']+1
-    best_dev_per = ckpt['best_dev_per']
+    best_dev_ppl = ckpt['best_dev_ppl']
     net.load_state_dict(ckpt['net_state_dict'])
-    print(f'resume training from epcoh {start_epoch} with best_dev_per {best_dev_per}')
+    print(f'resume training from epcoh {start_epoch} with best_dev_ppl {best_dev_ppl}')
 else:
     start_epoch = 0
-    best_dev_per = float('inf')
-criterion = nn.CTCLoss(blank=config.data.blank_idx, zero_infinity=True)
-optimizer = optim.SGD(net.parameters(), lr=config.training.lr, momentum=config.training.momentum)
+    best_dev_ppl = float('inf')
+criterion = nn.CrossEntropyLoss(size_average=True, ignore_index=config.data.pad_idx)
+optimizer = optim.SGD(net.parameters(), lr=config.training.lr)
 
 # summary(net, torch.zeros(2,500,26).cuda())
 ###############################################################################
@@ -167,13 +145,13 @@ optimizer = optim.SGD(net.parameters(), lr=config.training.lr, momentum=config.t
 
 for epoch in range(start_epoch, 1000):
     train(net, trainLoader, criterion, optimizer, epoch)
-    epoch_loss, epoch_per = evaluate(net, devLoader, criterion)
-    print(f'end of epoch {epoch}: dev loss {epoch_loss} | dev per {epoch_per}')
+    epoch_loss, epoch_ppl = evaluate(net, devLoader, criterion)
+    print(f'end of epoch {epoch}: dev loss {epoch_loss} | dev per {epoch_ppl}')
     
-    if epoch_per < best_dev_per:
-        best_dev_per = epoch_per
+    if epoch_ppl < best_dev_ppl:
+        best_dev_ppl = epoch_ppl
         torch.save({'net_state_dict':net.state_dict(), 
-                    'epoch':epoch, 'best_dev_per':best_dev_per}, config.data.trained_ctc)
+                    'epoch':epoch, 'best_dev_ppl':best_dev_ppl}, config.data.trained_lm)
         print('best model saved')
         
     

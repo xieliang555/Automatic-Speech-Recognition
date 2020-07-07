@@ -4,7 +4,7 @@ from torch.utils.data import Dataset
 
 import os
 from pathlib import Path
-import soundfile as sf
+# import soundfile as sf
 
 
 class TIMIT(Dataset):
@@ -48,7 +48,7 @@ class TIMIT(Dataset):
             txt_paths = [
                 p for p in txt_paths if p.split('/')[13] in core_test_list]
             
-        self.waveform =[sf.read(p)[0] for p in self.wav_paths]
+        self.waveform =[torchaudio.load(p)[0] for p in self.wav_paths]
         self.txt = []
         for p in txt_paths:
             with open(p) as f:
@@ -60,7 +60,7 @@ class TIMIT(Dataset):
         return len(self.wav_paths)
 
     def __getitem__(self, idx):
-        waveform = torch.from_numpy(self.waveform[idx]).view(1, -1).float()
+        waveform = self.waveform[idx]
         # get mfcc/fbank feature
         feature = torchaudio.compliance.kaldi.fbank(
             waveform, num_mel_bins=40, use_energy=True)
@@ -68,7 +68,7 @@ class TIMIT(Dataset):
         d1 = torchaudio.functional.compute_deltas(feature)
         d2 = torchaudio.functional.compute_deltas(d1)
         feature = torch.cat([feature, d1, d2], dim=-1)
-        # CMVN normalization
+        # CMVN normalization 
         mean = feature.mean(0, keepdim=True)
         std = feature.std(0, keepdim=True)
         feature = (feature-mean)/(std + 1e-10)
@@ -76,3 +76,7 @@ class TIMIT(Dataset):
         txt = self.txt[idx]
         txt = [self.mapping.get(t,t) for t in txt]
         return feature, txt
+    
+    
+    
+    

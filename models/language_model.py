@@ -45,12 +45,18 @@ class LM(nn.Module):
         nhid = config.model.lm.nhid
         nlayer = config.model.lm.nlayer
         tie_embedding = config.model.lm.tie_embedding
+        self.embed_drop_ratio = config.model.lm.embed_drop_ratio
+        self.lock_drope = config.model.lm.lock_drope
+        self.lock_droph = config.model.lm.lock_droph
+        self.lock_dropo = config.model.lm.lock_dropo
         
         self.embedding = nn.Embedding(vocabSize, nemd)
         self.rnns = nn.LSTM(nemd, nhid, nlayer, batch_first=True)
         self.lm_out = nn.Linear(nhid, vocabSize)
         self.lockdrop = LockedDropout()
         
+        # ? get nemd and nhid independent while support transducer inference(hidden)
+        # feed forward ?
         if tie_embedding:
             assert nemd==nhid
             self.lm_out.weight = self.embedding.weight
@@ -60,19 +66,20 @@ class LM(nn.Module):
         inputs: [N,T]
         outputs: [N,T,E]
         '''
-        embedded = self.embedding(inputs)
-#         embedded = embedded_dropout(self.embedding, inputs, 0.2)
-#         embedded = self.lockdrop(embedded, 0.2)
+        if self.embed_drop_ratio:
+            embedded = embedded_dropout(
+                self.embedding, inputs, self.embed_drop_ratio)
+        else:
+            embedded = self.embedding(inputs)
+        if self.lock_drope:
+            embedded = self.lockdrop(embedded, self.lock_drope)
         self.rnns.flatten_parameters()
         outputs, hidden = self.rnns(embedded, hidden)
-#         outputs = self.lockdrop(outputs, 0.2)
+        if self.lock_dropo:
+            outputs = self.lockdrop(outputs, self.lock_dropo)
         outputs = self.lm_out(outputs)
         return outputs, hidden
     
-    
-if __name__ == "__main__":
-    ''' To do: pretrain language model on TIMIT '''
-    pass
 
 
 

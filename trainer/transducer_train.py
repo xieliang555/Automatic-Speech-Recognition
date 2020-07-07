@@ -106,7 +106,7 @@ assert config.data.blank_idx == TEXT.vocab.stoi['<blank>']
 
 def my_collate(batch):
     '''
-    feature: [N,T,120]
+    feature: [N,T,123]
     feat_len: [N]
     utterance: [N,L]
     utter_len: [N]

@@ -71,9 +71,8 @@ class CTC_ASR(nn.Module):
         feature = self.pool1(feature)
         feature = self.block2(feature)
         feature = self.pool2(feature)
-        # Nx128xT/4xD/4 -> NxT/4x128xD/4
+        # [N,64,T/4,D/4] -> [N,T/4,16D]
         feature = feature.transpose(1, 2)
-        #  N x T/4 x 128 x D/4 -> N x T/4 x 32D
         feature = feature.contiguous().view(feature.shape[0], feature.shape[1], -1)
         self.rnn.flatten_parameters()
         feature, _ = self.rnn(feature)
